@@ -19,6 +19,9 @@ https://gist.github.com/lukegb/d2997a5fc7970ce6e1e1
 A parser of League of Legends replay files. 
 https://github.com/ryancole/LeagueReplayReader
 
+LolSpecAnalyzer is a Java debugging tool/framework for analyzing the League of Legends (http://leagueoflegends.com) spectator data format.
+https://github.com/Zero3/LolSpecAnalyzer
+
 @robertabcd / lol-ob - ROFL Container Notes
 https://github.com/robertabcd/lol-ob/wiki/ROFL-Container-Notes
 
