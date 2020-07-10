@@ -37,6 +37,9 @@ https://github.com/protopizza/AutoCaster
 @Matviy / LeagueReplayHook 
 https://github.com/Matviy/LeagueReplayHook
 
+This is an unofficial, uncomplete and (pretty sure) wrong documentation of the RESTful service which powers the League of Legends spectator mode.
+https://gist.github.com/themasch/8375971
+
 https://stackoverflow.com/questions/22827221/league-of-legends-read-chunks-keyframes-through-its-restful-api
 
 https://gamedev.stackexchange.com/questions/49856/league-of-legends-spectator-stream-format
