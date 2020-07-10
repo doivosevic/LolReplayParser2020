@@ -16,6 +16,9 @@ https://github.com/loldevs/leaguespec/wiki/Meeting-Summaries
 @lukegb lukegb/lolparse.py
 https://gist.github.com/lukegb/d2997a5fc7970ce6e1e1
 
+A parser of League of Legends replay files. 
+https://github.com/ryancole/LeagueReplayReader
+
 @robertabcd / lol-ob - ROFL Container Notes
 https://github.com/robertabcd/lol-ob/wiki/ROFL-Container-Notes
 
