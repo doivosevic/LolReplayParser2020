@@ -28,6 +28,13 @@ https://github.com/Zero3/LolSpecAnalyzer
 @robertabcd / lol-ob - ROFL Container Notes
 https://github.com/robertabcd/lol-ob/wiki/ROFL-Container-Notes
 
+Reference implementation of the rofl file parser
+https://github.com/loldevs/libOL
+
+LoL bot which I guess did everything from connecting to the RIOT server to issuing commands in version 4.X
+https://github.com/Theoretical/Summoning
+I've managed to collect and compile everything in one place https://github.com/Kungitoo/Summoning
+
 @EloGank / lol-replay-downloader 
 https://github.com/EloGank/lol-replay-downloader
 
