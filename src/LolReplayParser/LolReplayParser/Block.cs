@@ -1,11 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace LolReplayParser
 {
-    public class Block
+    [DebuggerDisplay("{Type} {ContentLen}")]
+    public class Block: IBlock
     {
+        public static string EMPTY = "    ";
+
+        public int Count => 1;
+
         public string Mask { get; }
         public string Time { get; }
         public string ContentLen { get; }
@@ -17,7 +23,8 @@ namespace LolReplayParser
         {
             this.Mask = mask;
             this.Time = time;
-            this.Type = type;
+            this.ContentLen = contentLen;
+            this.Type = type.PadLeft(4, ' ');
             this.Blockparam = blockparam;
             this.Content = content;
         }
