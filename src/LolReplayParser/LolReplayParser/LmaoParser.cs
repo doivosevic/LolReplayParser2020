@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 namespace LolReplayParser
 {
     public static class LmaoParser
     {
-        public static List<(string mask, string time, string contentLen, string type, string blockparam, string content)> GetBlocksFromLmao(byte[] inputLmao)
+        public static List<Block> GetBlocksFromLmao(byte[] inputLmao)
         {
             string hexed = BitConverter.ToString(inputLmao).Replace("-", "");
             int fullLen = hexed.Length;
@@ -48,7 +49,7 @@ namespace LolReplayParser
                 blocks.Add((mask, timeStr, contentLenStr, typeStr, blockParamStr, content));
             }
 
-            return blocks;
+            return blocks.Select(b => new Block(b.mask, b.time, b.contentLen, b.type, b.blockparam, b.content)).ToList();
         }
     }
 }

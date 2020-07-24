@@ -21,7 +21,7 @@ namespace LolReplayParser
 
                 var lmaoFiles = lmaos.Select(l => (l.Item1, string.Join(Environment.NewLine, l.Item2.Select(line =>
                 {
-                    return line.type + "," + line.time + "," + line.blockparam + "," + line.content;
+                    return line.Type + "," + line.Time + "," + line.Blockparam + "," + line.Content;
                     string v = line.ToString().TrimStart('(').TrimEnd(')').Replace(" ", "");
                     return v;
                 }))));

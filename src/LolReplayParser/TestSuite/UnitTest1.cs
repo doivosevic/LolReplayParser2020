@@ -1,6 +1,8 @@
 using LeagueReplayReader.Types;
 using LolReplayParser;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json.Linq;
+using Rofl.Reader.Parsers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,8 +11,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Resources;
+using System.Text;
 using TestSuite.resources;
-using TestSuite.resources.manyRoflFiles;
+
 
 namespace TestSuite
 {
@@ -43,44 +46,44 @@ namespace TestSuite
             }
         }
 
-        private static List<(string, byte[])> GetResources()
-        {
-            ResourceSet resourceSet = RoflFilesCollection.ResourceManager.GetResourceSet(CultureInfo.CurrentUICulture, true, true);
+        //private static List<(string, byte[])> GetResources()
+        //{
+        //    ResourceSet resourceSet = RoflFilesCollection.ResourceManager.GetResourceSet(CultureInfo.CurrentUICulture, true, true);
 
-            var resources = new List<(string, byte[])>();
+        //    var resources = new List<(string, byte[])>();
 
-            foreach (DictionaryEntry entry in resourceSet)
-            {
-                string resourceKey = entry.Key.ToString();
-                byte[] resource = (byte[])entry.Value;
+        //    foreach (DictionaryEntry entry in resourceSet)
+        //    {
+        //        string resourceKey = entry.Key.ToString();
+        //        byte[] resource = (byte[])entry.Value;
 
-                resources.Add((resourceKey, resource));
-            }
+        //        resources.Add((resourceKey, resource));
+        //    }
 
-            return resources;
-        }
+        //    return resources;
+        //}
 
-        [TestMethod]
-        public void BulkTestRoflToLmao()
-        {
-            var resources = GetResources();
-            var replayPayloads = resources.Select(r =>
-            {
-                using (var roflStream = new MemoryStream(r.Item2))
-                {
-                    var replay = new Replay(roflStream);
-                    List<(ReplayPayloadHeader, ReplayPayloadEntry)> payloads = replay.GetAllPayloads(limit: 5);
-                    return payloads;
-                }
-            }).ToList();
+        //[TestMethod]
+        //public void BulkTestRoflToLmao()
+        //{
+        //    var resources = GetResources();
+        //    var replayPayloads = resources.Select(r =>
+        //    {
+        //        using (var roflStream = new MemoryStream(r.Item2))
+        //        {
+        //            var replay = new Replay(roflStream);
+        //            List<(ReplayPayloadHeader, ReplayPayloadEntry)> payloads = replay.GetAllPayloads(limit: 5);
+        //            return payloads;
+        //        }
+        //    }).ToList();
 
-            var keyframesPerFile = replayPayloads.Select(p => p.Where(pp => pp.Item2.Type == ReplayPayloadEntryType.Keyframe).Select(pp => pp.Item2.Data));
-            var lmaoBlocksPerFile = keyframesPerFile.Select(k => k.Select(kk => LmaoParser.GetBlocksFromLmao(kk)));
+        //    var keyframesPerFile = replayPayloads.Select(p => p.Where(pp => pp.Item2.Type == ReplayPayloadEntryType.Keyframe).Select(pp => pp.Item2.Data));
+        //    var lmaoBlocksPerFile = keyframesPerFile.Select(k => k.Select(kk => LmaoParser.GetBlocksFromLmao(kk)));
 
-            // List of files -> List of keyframes -> List of blocks
+        //    // List of files -> List of keyframes -> List of blocks
 
-            var grouped = lmaoBlocksPerFile.Select(l => l.Select(b => GetRepetitionGroupations(b)).ToList()).ToList();
-        }
+        //    var grouped = lmaoBlocksPerFile.Select(l => l.Select(b => GetRepetitionGroupations(b)).ToList()).ToList();
+        //}
 
         [TestMethod]
         public void TestRoflToLmaoFile()
@@ -88,6 +91,22 @@ namespace TestSuite
             var roflFile = TestResources.EUN1_2389388796;
 
             var lmaoFiles = PepeWriter.GetStringFromRofl(roflFile);
+        }
+
+        [TestMethod]
+        public void TestRoflJsonParsing()
+        {
+            var roflFile = TestResources.EUN1_2389388796;
+
+            using (var stream = new MemoryStream(roflFile))
+            {
+                var replay = new RoflParser();
+                var result = replay.ReadReplayAsync(stream).Result;
+            }
+
+            var json = RoflJson.GetJSON(Encoding.UTF8.GetString(roflFile));
+            var statsRaw = json["statsJson"].ToObject<string>();
+            var stats = JArray.Parse(statsRaw);
         }
 
         [TestMethod]
@@ -103,7 +122,7 @@ namespace TestSuite
             Assert.IsTrue(key10Blocks.Count == 4269);
 
             var blocks = key10Blocks;
-            List<List<List<(string mask, string time, string contentLen, string type, string blockparam, string content)>>> groupations = GetRepetitionGroupations(blocks);
+            List<List<List<Block>>> groupations = GetRepetitionGroupations(blocks);
 
             var arrayedGroupations = groupations.Select(g => g.ToArray()).ToArray();
 
@@ -114,61 +133,109 @@ namespace TestSuite
             //Assert.IsTrue(arrayedGroupations[0].Count() == 4 && arrayedGroupations[2].Count() == 97 && arrayedGroupations[27].Count() == 4 && arrayedGroupations[59].Count() == 23 && arrayedGroupations[140].Count() == 7);
         }
 
-        private static List<List<List<(string mask, string time, string contentLen, string type, string blockparam, string content)>>> GetRepetitionGroupations(List<(string mask, string time, string contentLen, string type, string blockparam, string content)> blocks)
+        private static List<List<List<Block>>> GetRepetitionGroupations(List<Block> blocks)
         {
-            var groupations = new List<List<List<(string mask, string time, string contentLen, string type, string blockparam, string content)>>>();
+            var groupations = new List<List<List<Block>>>();
 
-            var typeCount = blocks.GroupBy(g => g.type).Select(g => (g.Key, g.Count())).OrderByDescending(g => g.Item2).ToList();
+            var typeCount = blocks.GroupBy(g => g.Type).Select(g => (g.Key, g.Count())).OrderByDescending(g => g.Item2).ToList();
 
-            IEnumerable<(string mask, string time, string contentLen, string type, string blockparam, string content)> next, rest;
+            IEnumerable<Block> rest = blocks.ToList();
 
-            rest = blocks.ToList();
+            var bs = blocks.ToList();
 
-            Collect(groupations, typeCount, "6B00", "8B00", ref rest);
-            Collect(groupations, typeCount, "1C02", "4B01", ref rest);
-            Collect(groupations, typeCount, "A800", "7B01", ref rest);
-            Collect(groupations, typeCount, "1701", "BB00", ref rest);
-            //Collect(groupations, typeCount, "9400", "BB00", ref rest);
-            Collect(groupations, typeCount, "5502", "7400", ref rest);
-            Collect(groupations, typeCount, "2101", "9C01", ref rest);
+            Dictionary<string, (int, List<string>)> repeatingPatterns = new Dictionary<string, (int, List<string>)>();
+
+            for (int i = 0; i < bs.Count; i++)
+            {
+                var n = bs[i];
+                if (n.Type == "") continue;
+
+                if (repeatingPatterns.ContainsKey(n.Type))
+                {
+                    // verify pattern
+                    int k = 0;
+                    var nsTypes = repeatingPatterns[n.Type].Item2;
+
+                    for (int j = i+1; j < bs.Count; j++)
+                    {
+                        if (k >= nsTypes.Count || (nsTypes[k] != bs[j].Type && nsTypes[k] != bs[j - 1].Type && bs[j].Type != "")) break;
+                        if (nsTypes[k] == bs[j].Type) k++;
+                    }
+
+                    if ((k * 1.0 / nsTypes.Count) > 0.6)
+                    {
+                        string first = n.Type;
+                        string last = nsTypes.Last();
+                        // pattern matches
+                        Collect(groupations, typeCount, first, last, ref rest);
+                        repeatingPatterns.Clear();
+                        bs = rest.ToList();
+                        i = 0;
+                    }
+                }
+                else
+                {
+                    // start the pattern list
+                    repeatingPatterns[n.Type] = (i, new List<string>());
+                }
+
+                // add type to pattern list of others
+                foreach (var k in repeatingPatterns.Keys.Where(k => k != n.Type))
+                {
+                    var list = repeatingPatterns[k].Item2;
+                    if (!list.Any() || list.Last() != n.Type)
+                        repeatingPatterns[k].Item2.Add(n.Type);
+                }
+            }
+
+            //Collect(groupations, typeCount, "6B00", "8B00", ref rest);
+            //Collect(groupations, typeCount, "1C02", "4B01", ref rest);
+            //Collect(groupations, typeCount, "A800", "7B01", ref rest);
+            //Collect(groupations, typeCount, "1701", "BB00", ref rest);
+            ////Collect(groupations, typeCount, "9400", "BB00", ref rest);
+            //Collect(groupations, typeCount, "5502", "7400", ref rest);
+            //Collect(groupations, typeCount, "2101", "9C01", ref rest);
 
             groupations.Add(new[] { rest.ToList() }.ToList());
             return groupations;
         }
 
         private static void Collect(
-            List<List<List<(string mask, string time, string contentLen, string type, string blockparam, string content)>>> groupations, 
-            List<(string Key, int)> typeCount, string from, string to, ref IEnumerable<(string mask, string time, string contentLen, string type, string blockparam, string content)> rest)
+            List<List<List<Block>>> groupations, 
+            List<(string Key, int)> typeCount, string from, string to, ref IEnumerable<Block> rest)
         {
             if (typeCount.Any(t => t.Key == from) == false || typeCount.Any(t => t.Key == to) == false) return;
 
-            int fromCount = typeCount.First(t => t.Key == from).Item2;
-            int toCount = typeCount.First(t => t.Key == to).Item2;
-
-            int howMany = Math.Min(fromCount, toCount);
-            var next = rest.TakeWhile(b => b.type != from);
-
-            if (next.Count() > 0) groupations.Add(new[] { next.ToList() }.ToList());
-
+            // Collect group before the pattern
+            var next = rest.TakeWhile(b => b.Type != from).ToList();
+            if (next.Count() > 0) groupations.Add(new List<List<Block>> { next });
             rest = rest.Skip(next.Count());
-            rest = GroupIntoNextX(rest: rest, groupations: groupations, times: howMany, untilType: to);
+
+
+            rest = GroupIntoNextX(rest: rest, groupations: groupations, untilType: to);
         }
 
-        private static IEnumerable<(string mask, string time, string contentLen, string type, string blockparam, string content)> GroupIntoNextX(
-            IEnumerable<(string mask, string time, string contentLen, string type, string blockparam, string content)> rest,
-            List<List<List<(string mask, string time, string contentLen, string type, string blockparam, string content)>>> groupations, int times, string untilType)
+        private static IEnumerable<Block> GroupIntoNextX(
+            IEnumerable<Block> rest,
+            List<List<List<Block>>> groupations,
+            string untilType)
         {
-            var group = new List<List<(string mask, string time, string contentLen, string type, string blockparam, string content)>>();
+            var group = new List<List<Block>>();
+            int iOfNextUntilType;
 
-            for (int i = 0; i < times; i++)
+            do
             {
-                var next = rest.TakeWhile(b => b.type != untilType).ToList();
+                var next = rest.TakeWhile(b => b.Type != untilType).ToList();
+                //if (next.Count == rest.Count() && (!next.Any() || next.Last().Type != untilType)) break;
                 rest = rest.Skip(next.Count());
                 next.Add(rest.First());
                 rest = rest.Skip(1);
 
                 group.Add(next);
+
+                iOfNextUntilType = rest.ToList().FindIndex(r => r.Type == untilType);
             }
+            while (iOfNextUntilType >= 0 && (iOfNextUntilType * 1.0 / group.Average(g => g.Count) > 0.8));
 
             groupations.Add(group);
 
@@ -183,28 +250,28 @@ namespace TestSuite
 
             IEnumerable<(string f, byte[])> resources = Directory.GetFiles(dirName).Where(filenameFilter).Select(f => (f, File.ReadAllBytes(f)));
 
-            var splitFile = new List<List<(string mask, string time, string contentLen, string type, string blockparam, string content)>>();
+            var splitFile = new List<List<Block>>();
 
             foreach (byte[] res in resources.Select(r => r.Item2))
             {
                 var blocks = LmaoParser.GetBlocksFromLmao(res);
 
-                var byType = blocks.GroupBy(b => b.type).Select(g => (g.Key, g.ToArray())).OrderByDescending(g => g.Item2.Length).ToArray();
+                var byType = blocks.GroupBy(b => b.Type).Select(g => (g.Key, g.ToArray())).OrderByDescending(g => g.Item2.Length).ToArray();
 
-                var groupedByType = new List<(string, List<(string mask, string time, string contentLen, string type, string blockparam, string content)>)>();
+                var groupedByType = new List<(string, List<Block>)>();
 
-                groupedByType.Add(("first", new List<(string mask, string time, string contentLen, string type, string blockparam, string content)>()));
+                groupedByType.Add(("first", new List<Block>()));
 
                 foreach (var b in blocks)
                 {
-                    if (groupedByType.Last().Item1 == b.type) groupedByType.Last().Item2.Add(b);
-                    else groupedByType.Add((b.type, new List<(string mask, string time, string contentLen, string type, string blockparam, string content)> { b }));
+                    if (groupedByType.Last().Item1 == b.Type) groupedByType.Last().Item2.Add(b);
+                    else groupedByType.Add((b.Type, new List<Block> { b }));
                 }
 
                 var gbt = groupedByType.OrderByDescending(g => g.Item2.Count).Select(g => g.Item2.ToArray()).ToArray();
 
-                List<List<(string, List<(string mask, string time, string contentLen, string type, string blockparam, string content)>)>> evenMoreGroupedByType =
-                    new List<List<(string, List<(string mask, string time, string contentLen, string type, string blockparam, string content)>)>>();
+                List<List<(string, List<Block>)>> evenMoreGroupedByType =
+                    new List<List<(string, List<Block>)>>();
 
                 evenMoreGroupedByType.Add(groupedByType.GetRange(1, 4));
 
@@ -225,7 +292,7 @@ namespace TestSuite
 
             var all = splitFile.SelectMany(f => f).ToList();
 
-            var distinct = all.GroupBy(k => k.mask + k.time + k.contentLen + k.type + k.blockparam + k.content).OrderByDescending(g => g.Count()).Select(g => g.ToArray()).ToArray();
+            var distinct = all.GroupBy(k => k.Mask + k.Time + k.ContentLen + k.Type + k.Blockparam + k.Content).OrderByDescending(g => g.Count()).Select(g => g.ToArray()).ToArray();
 
             int total = resources.Count();
         }

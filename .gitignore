@@ -1,3 +1,6 @@
 /src/LolReplayParser/LolReplayParser/obj/
 /src/LolReplayParser/TestSuite/bin/
 /src/LolReplayParser/TestSuite/obj/
+**/.vs/
+**/packages/
+**/TestSuite/
