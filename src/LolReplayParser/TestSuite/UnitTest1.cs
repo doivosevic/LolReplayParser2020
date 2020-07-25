@@ -122,42 +122,54 @@ namespace TestSuite
             Assert.IsTrue(key10Blocks.Count == 4269);
 
             var blocks = key10Blocks;
-            var castBlocks = blocks.Cast<IBlock>().ToList();
-            List<List<List<IBlock>>> groupations = GetRepetitionGroupations(castBlocks);
 
-            var arrayedGroupations = groupations.Select(g => g.ToArray()).ToArray();
+            var groupations = GetRepetitionGroupations(blocks);
+            var groupations2 = GetRepetitionGroupations(key1Blocks);
 
-            var composedWithEmpties = CreateCompositionWithEmpties(castBlocks);
-            int composedCount = composedWithEmpties.Sum(g => g.Count);
-
-            var all = new List<Block>();
-            for (int i = 0; i < composedWithEmpties.Count; i++)
-            {
-                if (composedWithEmpties[i] is Block) all.Add(composedWithEmpties[i] as Block);
-                else all.AddRange((composedWithEmpties[i] as BlockComposed).Blocks.Cast<Block>());
-            }
-
-            for (int i = 0; i < blocks.Count; i++)
-            {
-                if (blocks[i] != all[i])
-                {
-
-                }
-            }
-
-            var flattened = groupations.SelectMany(g => g).SelectMany(g => g).ToList();
+            var flattened = groupations.SelectMany(g => g.Item4).SelectMany(g => g).ToList();
             int flattenedCount = flattened.Sum(b => b.Count);
 
-            int inGroupations = arrayedGroupations.SelectMany(g => g).SelectMany(g => g).Sum(b => b.Count);
-            Assert.AreEqual(blocks.Count(), inGroupations);
-            //Assert.IsTrue(arrayedGroupations.SelectMany(g => g.SelectMany(gg => gg)).All(g => blocks.Any(b => b == g)));
+            Assert.AreEqual(blocks.Count(), flattenedCount);
 
+            //Assert.IsTrue(arrayedGroupations.SelectMany(g => g.SelectMany(gg => gg)).All(g => blocks.Any(b => b == g)));
             //Assert.IsTrue(arrayedGroupations[0].Count() == 4 && arrayedGroupations[2].Count() == 97 && arrayedGroupations[27].Count() == 4 && arrayedGroupations[59].Count() == 23 && arrayedGroupations[140].Count() == 7);
         }
 
-        private static List<List<List<IBlock>>> GetRepetitionGroupations(List<IBlock> blocks)
+        [TestMethod]
+        public void TestContent123()
         {
-            var groupations = new List<List<List<IBlock>>>();
+            string dirName = @"C:\Users\domin\Documents\League of Legends\Replays - Copy";
+            Func<string, bool> filenameFilter = f => f.Contains("-1-Key") && !f.EndsWith(".bic");
+
+            List<(string f, byte[])> resources = Directory.GetFiles(dirName).Where(filenameFilter).Select(f => (f, File.ReadAllBytes(f))).ToList();
+
+            var sample = resources[5];
+            GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(sample.Item2));
+
+            var samples = resources.Take(11).Select(r => GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(r.Item2))).ToList();
+
+
+            var correct = new[] { 0, 1, 2, 4, 5, 7, 8, 11 };
+            foreach(var i in correct)
+            {
+                var res = resources[i];
+                var grouped = GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(res.Item2));
+
+                var pattern = new[] { ("F901", "BE00"), ("6B00", "8B00"), ("1C02", "8601"), ("A800", "7B01"), ("1701", "A200"),
+                                      ("5502", "7400"), ("F000", "0A02"), ("2101", "2F02"), ("2101", "9C01") };
+
+                for (int j = 0; j < pattern.Length; j++)
+                {
+                    Assert.IsTrue(pattern[j].Item1 == grouped[j].Item1 && pattern[j].Item2 == grouped[j].Item2, i.ToString() + " " + j);
+                }
+            }
+        }
+
+        private static List<(string, string, int, List<List<IBlock>>)> GetRepetitionGroupations(List<Block> uncastBlocks)
+        {
+            var blocks = uncastBlocks.Cast<IBlock>().ToList();
+
+            var groupations = new List<(string, string, int, List<List<IBlock>>)>();
 
             var typeCount = blocks.GroupBy(g => g.Type).Select(g => (g.Key, g.Count())).OrderByDescending(g => g.Item2).ToList();
 
@@ -172,7 +184,7 @@ namespace TestSuite
             for (int i = 0; i < rest.Count; i++)
             {
                 var n = rest[i];
-                if (n.Type == Block.EMPTY) continue;
+                string first = n.Type;
 
                 if (repeatingPatterns.ContainsKey(n.Type))
                 {
@@ -182,13 +194,14 @@ namespace TestSuite
 
                     for (int j = i + 1; j < rest.Count; j++)
                     {
-                        if (k >= nsTypes.Count || (nsTypes[k] != rest[j].Type && nsTypes[k] != rest[j - 1].Type && rest[j].Type != Block.EMPTY)) break;
+                        if (k >= nsTypes.Count) break;
+                        if (nsTypes[k] != rest[j].Type && nsTypes[k] != rest[j - 1].Type 
+                            && !(k >= 1 && j >= 1 && nsTypes[k] == rest[j + 1].Type && nsTypes[k - 1] == rest[j - 1].Type)) break;
                         if (nsTypes[k] == rest[j].Type) k++;
                     }
 
                     if ((k * 1.0 / nsTypes.Count) > 0.6)
                     {
-                        string first = n.Type;
                         string last = nsTypes.Last();
                         // pattern matches
                         (var newRest, var newGroupations) = Collect(typeCount, first, last, rest);
@@ -199,10 +212,10 @@ namespace TestSuite
                         }
                         else
                         {
-                            groupations.AddRange(newGroupations);
+                            groupations.AddRange(newGroupations.Select(g => (g.First().First().Type, g.First().Last().Type, g.Count, g)));
                             rest = newRest;
                             repeatingPatterns.Clear();
-                            i = 0;
+                            i = -1;
                         }
                     }
                 }
@@ -229,7 +242,8 @@ namespace TestSuite
             //Collect(groupations, typeCount, "5502", "7400", ref rest);
             //Collect(groupations, typeCount, "2101", "9C01", ref rest);
 
-            groupations.Add(new[] { rest.ToList() }.ToList());
+            groupations.Add(("", "", rest.Count, new[] { rest }.ToList()));
+
             return groupations;
         }
 
@@ -301,7 +315,7 @@ namespace TestSuite
                 iOfNextUntilType = rest.FindIndex(r => r.Type == untilType) + 1;
                 avg = group.Average(g => g.Count);
             }
-            while (iOfNextUntilType >= 0 && (iOfNextUntilType / avg > 0.8 && iOfNextUntilType / avg < 1.2));
+            while (iOfNextUntilType >= 0 && (iOfNextUntilType / avg > 0.6 && iOfNextUntilType / avg < 1.4));
 
             groupations.Add(group);
 
