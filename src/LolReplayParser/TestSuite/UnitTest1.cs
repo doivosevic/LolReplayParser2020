@@ -123,8 +123,8 @@ namespace TestSuite
 
             var blocks = key10Blocks;
 
-            var groupations = GetRepetitionGroupations(blocks);
-            var groupations2 = GetRepetitionGroupations(key1Blocks);
+            var groupations = Stuff.GetRepetitionGroupations(blocks);
+            var groupations2 = Stuff.GetRepetitionGroupations(key1Blocks);
 
             var flattened = groupations.SelectMany(g => g.Item4).SelectMany(g => g).ToList();
             int flattenedCount = flattened.Sum(b => b.Count);
@@ -143,191 +143,33 @@ namespace TestSuite
 
             List<(string f, byte[])> resources = Directory.GetFiles(dirName).Where(filenameFilter).Select(f => (f, File.ReadAllBytes(f))).ToList();
 
-            var sample = resources[5];
-            GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(sample.Item2));
+            var sample = resources[6];
+            var g = Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(sample.Item2));
 
-            var samples = resources.Take(11).Select(r => GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(r.Item2))).ToList();
+            var samples = resources.Take(11).Select(r => Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(r.Item2))).ToList();
 
 
-            var correct = new[] { 0, 1, 2, 4, 5, 7, 8, 11 };
-            foreach(var i in correct)
+            var correct = new[] { 0, 1, 2, 3, 4, 5, 7, 8, 11 }; // missing 6 9 10 11
+            var all = new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+
+            var pattern = new[] { ("F901", "BE00"), ("6B00", "8B00"), ("1C02", "8601"), ("A800", "7B01"), ("1701", "A200"),
+                                  ("5502", "7400"), ("F000", "0A02"), ("2101", "2F02"), ("2101", "9C01") };
+
+            foreach (var i in correct.Concat(all))
             {
                 var res = resources[i];
-                var grouped = GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(res.Item2));
-
-                var pattern = new[] { ("F901", "BE00"), ("6B00", "8B00"), ("1C02", "8601"), ("A800", "7B01"), ("1701", "A200"),
-                                      ("5502", "7400"), ("F000", "0A02"), ("2101", "2F02"), ("2101", "9C01") };
+                var grouped = Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(res.Item2));
 
                 for (int j = 0; j < pattern.Length; j++)
                 {
-                    Assert.IsTrue(pattern[j].Item1 == grouped[j].Item1 && pattern[j].Item2 == grouped[j].Item2, i.ToString() + " " + j);
-                }
-            }
-        }
-
-        private static List<(string, string, int, List<List<IBlock>>)> GetRepetitionGroupations(List<Block> uncastBlocks)
-        {
-            var blocks = uncastBlocks.Cast<IBlock>().ToList();
-
-            var groupations = new List<(string, string, int, List<List<IBlock>>)>();
-
-            var typeCount = blocks.GroupBy(g => g.Type).Select(g => (g.Key, g.Count())).OrderByDescending(g => g.Item2).ToList();
-
-            Func<string, string> ToBin = hexstring => String.Join(String.Empty, hexstring.Select(c => Convert.ToString(Convert.ToInt32(c.ToString(), 16), 2).PadLeft(4, '0')));
-
-            var asString = typeCount.Where(t => t.Key[0] != ' ').Select(t => ToBin(t.Key)).ToList();
-
-            List<IBlock> rest = CreateCompositionWithEmpties(blocks);
-
-            Dictionary<string, (int, List<string>)> repeatingPatterns = new Dictionary<string, (int, List<string>)>();
-
-            for (int i = 0; i < rest.Count; i++)
-            {
-                var n = rest[i];
-                string first = n.Type;
-
-                if (repeatingPatterns.ContainsKey(n.Type))
-                {
-                    // verify pattern
-                    int k = 0;
-                    var nsTypes = repeatingPatterns[n.Type].Item2;
-
-                    for (int j = i + 1; j < rest.Count; j++)
+                    bool isCorrect = pattern[j].Item1 == grouped[j].Item1 && pattern[j].Item2 == grouped[j].Item2;
+                    if (!isCorrect && correct.Contains(i)) Assert.IsTrue(isCorrect, i.ToString() + " " + j);
+                    else if (!isCorrect)
                     {
-                        if (k >= nsTypes.Count) break;
-                        if (nsTypes[k] != rest[j].Type && nsTypes[k] != rest[j - 1].Type 
-                            && !(k >= 1 && j >= 1 && nsTypes[k] == rest[j + 1].Type && nsTypes[k - 1] == rest[j - 1].Type)) break;
-                        if (nsTypes[k] == rest[j].Type) k++;
-                    }
 
-                    if ((k * 1.0 / nsTypes.Count) > 0.6)
-                    {
-                        string last = nsTypes.Last();
-                        // pattern matches
-                        (var newRest, var newGroupations) = Collect(typeCount, first, last, rest);
-                        if (newGroupations.Last().Count < 5)
-                        {
-                            // not enough repetitions
-                            repeatingPatterns.Remove(n.Type);
-                        }
-                        else
-                        {
-                            groupations.AddRange(newGroupations.Select(g => (g.First().First().Type, g.First().Last().Type, g.Count, g)));
-                            rest = newRest;
-                            repeatingPatterns.Clear();
-                            i = -1;
-                        }
                     }
                 }
-                else
-                {
-                    // start the pattern list
-                    repeatingPatterns[n.Type] = (i, new List<string>());
-                }
-
-                // add type to pattern list of others
-                foreach (var k in repeatingPatterns.Keys.Where(k => k != n.Type))
-                {
-                    var list = repeatingPatterns[k].Item2;
-                    if (!list.Any() || list.Last() != n.Type)
-                        repeatingPatterns[k].Item2.Add(n.Type);
-                }
             }
-
-            //Collect(groupations, typeCount, "6B00", "8B00", ref rest);
-            //Collect(groupations, typeCount, "1C02", "4B01", ref rest); // LEN 2
-            //Collect(groupations, typeCount, "A800", "7B01", ref rest); 
-            //Collect(groupations, typeCount, "1701", "BB00", ref rest);
-            ////Collect(groupations, typeCount, "9400", "BB00", ref rest);
-            //Collect(groupations, typeCount, "5502", "7400", ref rest);
-            //Collect(groupations, typeCount, "2101", "9C01", ref rest);
-
-            groupations.Add(("", "", rest.Count, new[] { rest }.ToList()));
-
-            return groupations;
-        }
-
-        private static List<IBlock> CreateCompositionWithEmpties(List<IBlock> blocks)
-        {
-            List<IBlock> rest = new List<IBlock>();
-            BlockComposed lastComposed = null;
-
-            var lastActual = blocks[0];
-            for (int i = 0; i < blocks.Count; i++)
-            {
-                if (blocks[i].Type == Block.EMPTY)
-                {
-                    if (lastComposed == null)
-                    {
-                        var last = blocks[i - 1];
-                        rest.RemoveAt(rest.Count - 1);
-                        lastComposed = new BlockComposed(last.Type, new List<IBlock> { last });
-                        rest.Add(lastComposed);
-                    }
-
-                    lastComposed.Blocks.Add(blocks[i]);
-                }
-                else
-                {
-                    rest.Add(blocks[i]);
-                    lastComposed = null;
-                }
-            }
-
-            return rest;
-        }
-
-        private static (List<IBlock> rest, List<List<List<IBlock>>> groupations) Collect(List<(string Key, int)> typeCount, string from, string to, IEnumerable<IBlock> restt)
-        {
-            var rest = restt.ToList();
-
-            List<List<List<IBlock>>> groupations = new List<List<List<IBlock>>>();
-
-            if (typeCount.Any(t => t.Key == from) == false || typeCount.Any(t => t.Key == to) == false) return default;
-
-            // Collect group before the pattern
-            var next = rest.TakeWhile(b => b.Type != from).ToList();
-            if (next.Count() > 0) groupations.Add(new List<List<IBlock>> { next });
-            rest = rest.Skip(next.Count()).ToList();
-
-
-            rest = GroupIntoNextX(rest: rest, groupations: groupations, untilType: to);
-
-            return (rest, groupations);
-        }
-
-        private static List<IBlock> GroupIntoNextX(
-            List<IBlock> rest,
-            List<List<List<IBlock>>> groupations,
-            string untilType)
-        {
-            var group = new List<List<IBlock>>();
-            int iOfNextUntilType;
-            double avg;
-
-            do
-            {
-                var next = TakeWhileIncluding(rest, untilType);
-                rest = rest.Skip(next.Count).ToList();
-
-                group.Add(next);
-
-                iOfNextUntilType = rest.FindIndex(r => r.Type == untilType) + 1;
-                avg = group.Average(g => g.Count);
-            }
-            while (iOfNextUntilType >= 0 && (iOfNextUntilType / avg > 0.6 && iOfNextUntilType / avg < 1.4));
-
-            groupations.Add(group);
-
-            return rest;
-        }
-
-        private static List<IBlock> TakeWhileIncluding(List<IBlock> rest, string untilType)
-        {
-            int indexOfType = rest.FindIndex(b => b.Type == untilType);
-
-            if (indexOfType >= 0) return rest.Take(indexOfType + 1).ToList();
-            else return rest;
         }
 
         [TestMethod]
