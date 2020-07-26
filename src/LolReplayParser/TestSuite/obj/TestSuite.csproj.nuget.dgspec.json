@@ -4,6 +4,16 @@
     "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\TestSuite\\TestSuite.csproj": {}
   },
   "projects": {
+    "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LeagueReplayParser\\LeagueReplayParser\\LeagueReplayParser.csproj": {
+      "restore": {
+        "projectUniqueName": "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LeagueReplayParser\\LeagueReplayParser\\LeagueReplayParser.csproj",
+        "projectName": "LeagueReplayParser",
+        "projectPath": "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LeagueReplayParser\\LeagueReplayParser\\LeagueReplayParser.csproj"
+      },
+      "frameworks": {
+        "net452": {}
+      }
+    },
     "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LolReplayParser\\LolReplayParser.csproj": {
       "version": "1.0.0",
       "restore": {
@@ -91,6 +101,9 @@
         "frameworks": {
           "netcoreapp3.1": {
             "projectReferences": {
+              "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LeagueReplayParser\\LeagueReplayParser\\LeagueReplayParser.csproj": {
+                "projectPath": "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LeagueReplayParser\\LeagueReplayParser\\LeagueReplayParser.csproj"
+              },
               "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LolReplayParser\\LolReplayParser.csproj": {
                 "projectPath": "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LolReplayParser\\LolReplayParser.csproj"
               }

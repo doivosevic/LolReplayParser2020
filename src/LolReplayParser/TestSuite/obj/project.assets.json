@@ -1554,6 +1554,15 @@
           "lib/netstandard1.3/System.Xml.XDocument.dll": {}
         }
       },
+      "LeagueReplayParser/1.0.0": {
+        "type": "project",
+        "compile": {
+          "bin/placeholder/LeagueReplayParser.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/LeagueReplayParser.dll": {}
+        }
+      },
       "LolReplayParser/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v3.1",
@@ -5455,6 +5464,11 @@
         "system.xml.xdocument.nuspec"
       ]
     },
+    "LeagueReplayParser/1.0.0": {
+      "type": "project",
+      "path": "../LeagueReplayParser/LeagueReplayParser/LeagueReplayParser.csproj",
+      "msbuildProject": "../LeagueReplayParser/LeagueReplayParser/LeagueReplayParser.csproj"
+    },
     "LolReplayParser/1.0.0": {
       "type": "project",
       "path": "../LolReplayParser/LolReplayParser.csproj",
@@ -5463,6 +5477,7 @@
   },
   "projectFileDependencyGroups": {
     ".NETCoreApp,Version=v3.1": [
+      "LeagueReplayParser >= 1.0.0",
       "LolReplayParser >= 1.0.0",
       "MSTest.TestAdapter >= 2.1.0",
       "MSTest.TestFramework >= 2.1.0",
@@ -5497,6 +5512,9 @@
       "frameworks": {
         "netcoreapp3.1": {
           "projectReferences": {
+            "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LeagueReplayParser\\LeagueReplayParser\\LeagueReplayParser.csproj": {
+              "projectPath": "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LeagueReplayParser\\LeagueReplayParser\\LeagueReplayParser.csproj"
+            },
             "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LolReplayParser\\LolReplayParser.csproj": {
               "projectPath": "C:\\git\\LolReplayParser2020\\src\\LolReplayParser\\LolReplayParser\\LolReplayParser.csproj"
             }

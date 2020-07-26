@@ -1,5 +1,6 @@
 using LeagueReplayReader.Types;
 using LolReplayParser;
+using LeagueReplayParser;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
 using Rofl.Reader.Parsers;
@@ -34,7 +35,7 @@ namespace TestSuite
 
                 var wrongKeyframe = TestResources._2440330860_9_Keyframe;
 
-                var replay = new Replay(roflStream);
+                var replay = new LeagueReplayReader.Types.Replay(roflStream);
                 List<(ReplayPayloadHeader, ReplayPayloadEntry)> payloads = replay.GetAllPayloads();
 
                 Assert.IsTrue(payloads.Any(p => Utilities.AreEqual(p.Item2.Data, chunk1)));
@@ -138,22 +139,32 @@ namespace TestSuite
         [TestMethod]
         public void TestContent123()
         {
-            string dirName = @"C:\Users\domin\Documents\League of Legends\Replays - Copy";
-            Func<string, bool> filenameFilter = f => f.Contains("-1-Key") && !f.EndsWith(".bic");
+            var pattern = new[] { ("F901", "BE00"), ("6B00", "8B00"), ("1C02", "8601"), ("A800", "7B01"), ("1701", "A200"),
+                                  ("5502", "7400"), ("F000", "0A02"), ("2101", "2F02"), ("2101", "9C01") };
+
+            ValidatePatternForAllFilesMatchingFilePattern("-1-Key", pattern);
+
+            ValidatePatternForAllFilesMatchingFilePattern("-2-Key", pattern);
+
+            var correct = new[] { 0, 1, 2, 3, 4, 5, 7, 8, 11 };
+        }
+
+        private static void ValidatePatternForAllFilesMatchingFilePattern(string filePattern, (string, string)[] pattern, int[] correct = null)
+        {
+            string dirName = @"C:\Users\domin\Documents\League of Legends\ReplaysNewer";
+
+            Func<string, bool> filenameFilter = f => f.Contains(filePattern) && !f.EndsWith(".bic");
 
             List<(string f, byte[])> resources = Directory.GetFiles(dirName).Where(filenameFilter).Select(f => (f, File.ReadAllBytes(f))).ToList();
 
-            var sample = resources[6];
+            var sample = resources[2];
             var g = Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(sample.Item2));
 
-            var samples = resources.Take(11).Select(r => Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(r.Item2))).ToList();
+            var samples = resources.Select(r => Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(r.Item2))).ToList();
 
+            var all = Enumerable.Range(0, resources.Count).ToArray();
 
-            var correct = new[] { 0, 1, 2, 3, 4, 5, 7, 8, 11 }; // missing 6 9 10 11
-            var all = new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
-
-            var pattern = new[] { ("F901", "BE00"), ("6B00", "8B00"), ("1C02", "8601"), ("A800", "7B01"), ("1701", "A200"),
-                                  ("5502", "7400"), ("F000", "0A02"), ("2101", "2F02"), ("2101", "9C01") };
+            correct = correct ?? all;
 
             foreach (var i in correct.Concat(all))
             {
@@ -162,6 +173,53 @@ namespace TestSuite
 
                 for (int j = 0; j < pattern.Length; j++)
                 {
+                    bool isCorrect = pattern[j].Item1 == grouped[j].Item1 && pattern[j].Item2 == grouped[j].Item2;
+                    if (!isCorrect && correct.Contains(i)) Assert.IsTrue(isCorrect, i.ToString() + " " + j);
+                    else if (!isCorrect)
+                    {
+
+                    }
+                }
+            }
+        }
+
+        [TestMethod]
+        public void TestContent1234()
+        {
+            var pattern = new[] { ("F901", "BE00"), ("6B00", "8B00"), ("1C02", "8601"), ("A800", "7B01"), ("1701", "A200"),
+                                  ("5502", "7400"), ("F000", "0A02"), ("2101", "2F02"), ("2101", "9C01") };
+
+            ValidatePattern(pattern);
+        }
+
+        private static void ValidatePattern((string, string)[] pattern, int[] correct = null)
+        {
+            string dirName = @"C:\Users\domin\Documents\League of Legends\ReplaysNewer";
+
+            Func<string, bool> filenameFilter = f => f.EndsWith(".rofl");
+
+            var filenames = Directory.GetFiles(dirName).Where(filenameFilter);
+            List<(string f, byte[])> resources = filenames.Select(f => (f, File.ReadAllBytes(f))).ToList();
+            var asLmaos = resources.Select(r => LmaoParser.GetFullPayloadsFromRofl(r.Item2, 1, true)).ToList();
+            var asGrouped = asLmaos.Select(l => Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(l.First().Item2.Data))).ToList();
+
+            var filesAsSplitLines = filenames.Select(f => File.ReadLines(f));
+            var statReplays = filesAsSplitLines.Select(r => LeagueReplayParser.Parser.FillReplay(new LeagueReplayParser.Replay(null), r)).ToList();
+
+            var sample = resources[2];
+            var g = Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(sample.Item2));
+
+            var samples = resources.Select(r => Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(r.Item2))).ToList();
+
+            var all = Enumerable.Range(0, resources.Count).ToArray();
+
+            correct = correct ?? all;
+
+            foreach (var i in correct.Concat(all))
+            {
+                for (int j = 0; j < pattern.Length; j++)
+                {
+                    var grouped = asGrouped[i];
                     bool isCorrect = pattern[j].Item1 == grouped[j].Item1 && pattern[j].Item2 == grouped[j].Item2;
                     if (!isCorrect && correct.Contains(i)) Assert.IsTrue(isCorrect, i.ToString() + " " + j);
                     else if (!isCorrect)

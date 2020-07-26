@@ -13,6 +13,8 @@ namespace LeagueReplayParser
 
         public IReplay(string replayPath)
         {
+            if (replayPath == null) return;
+
             FileInfo replay = new FileInfo(replayPath);
 
             if (!replay.Exists || replay.Extension != ".rofl")

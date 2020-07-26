@@ -1,6 +1,8 @@
-﻿using System;
+﻿using LeagueReplayReader.Types;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 
 namespace LolReplayParser
@@ -50,6 +52,34 @@ namespace LolReplayParser
             }
 
             return blocks.Select(b => new Block(b.mask, b.time, b.contentLen, b.type, b.blockparam, b.content)).ToList();
+        }
+
+        public static List<byte[]> GetPayloadsFromRofl(byte[] roflFile, int numberOfPayloads = -1, bool justKeyframes = false)
+        {
+            List<(string filename, string content)> files = new List<(string filename, string content)>();
+
+            using (var roflStream = new MemoryStream(roflFile))
+            {
+                var payloads = new Replay(roflStream).GetAllPayloads(numberOfPayloads, justKeyframes);
+
+                List<byte[]> ret = payloads.Select(p => p.Item2.Data).ToList();
+
+                return ret;
+            }
+        }
+
+        public static List<(ReplayPayloadHeader, ReplayPayloadEntry)> GetFullPayloadsFromRofl(byte[] roflFile, int numberOfPayloads = -1, bool justKeyframes = false)
+        {
+            List<(string filename, string content)> files = new List<(string filename, string content)>();
+
+            using (var roflStream = new MemoryStream(roflFile))
+            {
+                var payloads = new Replay(roflStream).GetAllPayloads(numberOfPayloads, justKeyframes);
+
+                List<(ReplayPayloadHeader, ReplayPayloadEntry)> ret = payloads.ToList();
+
+                return ret;
+            }
         }
     }
 }

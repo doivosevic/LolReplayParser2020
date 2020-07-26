@@ -48,14 +48,20 @@ namespace LeagueReplayReader.Types
             m_entryDataOffset = m_header.PayloadOffset + (17 * (m_payloadHeader.ChunkCount + m_payloadHeader.KeyframeCount));
         }
 
-        public List<(ReplayPayloadHeader, ReplayPayloadEntry)> GetAllPayloads(int limit = -1)
+        public List<(ReplayPayloadHeader, ReplayPayloadEntry)> GetAllPayloads(int limit = -1, bool justKeyframes = false)
         {
             var payloads = new List<(ReplayPayloadHeader, ReplayPayloadEntry)>();
 
-            while (this.ReadEntry() && limit-- != 0)
+            while (this.ReadEntry() && limit != 0)
             {
                 ReplayPayloadHeader payloadHeader = this.PayloadHeader;
                 ReplayPayloadEntry payloadEntry = this.PayloadEntry;
+
+                if (justKeyframes)
+                {
+                    if (payloadEntry.Type == ReplayPayloadEntryType.Chunk) continue;
+                    else limit--;
+                }
 
                 payloads.Add((payloadHeader, payloadEntry));
             }
@@ -63,13 +69,13 @@ namespace LeagueReplayReader.Types
             return payloads;
         }
 
-        public bool ReadEntry()
+        public bool ReadEntry(int? whichEntry = null)
         {
             // make sure we have no read beyond the bounds of the entry data
             if (m_currentEntry < (m_payloadHeader.ChunkCount + m_payloadHeader.KeyframeCount))
             {
                 // seek to this entry's starting offset
-                m_stream.Seek(m_header.PayloadOffset + (17 * m_currentEntry), SeekOrigin.Begin);
+                m_stream.Seek(m_header.PayloadOffset + (17 * (whichEntry ?? m_currentEntry)), SeekOrigin.Begin);
 
                 // read out the payload entry
                 m_payloadEntry = new ReplayPayloadEntry(this, m_stream, m_entryDataOffset);

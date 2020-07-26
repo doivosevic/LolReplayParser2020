@@ -51,7 +51,7 @@ namespace LeagueReplayParser
         }
 
         // See IReplay constructor
-        internal Replay(string replayPath) : base(replayPath) { }
+        public Replay(string replayPath) : base(replayPath) { }
 
         /// <summary>
         /// Aynchronously returns a Replay instance given the replay file.
@@ -100,23 +100,30 @@ namespace LeagueReplayParser
         {
             Replay replay = new Replay(this.Path.FullName);
 
-            string replayFileContents = string.Join("", File.ReadLines(this.Path.FullName, encoding ?? Encoding.Default).Take(20).ToList<string>().ToArray<string>());
-            JObject json = this.GetJSON(replayFileContents);
-            List<Player> players = this.GetPlayers(JArray.Parse(json["statsJson"].ToObject<string>()));
+            var fileLines = File.ReadLines(this.Path.FullName, encoding ?? Encoding.Default);
+            FillReplay(replay, fileLines);
+
+            return replay;
+        }
+
+        public static Replay FillReplay(Replay replay, IEnumerable<string> fileLines)
+        {
+            string replayFileContents = string.Join("", fileLines.Take(20).ToList<string>().ToArray<string>());
+            JObject json = GetJSON(replayFileContents);
+            List<Player> players = GetPlayers(JArray.Parse(json["statsJson"].ToObject<string>()));
 
             replay.GameLength = TimeSpan.FromMilliseconds(json["gameLength"].ToObject<float>());
             replay.GameVersion = new Version(json["gameVersion"].ToObject<string>());
-            replay.PurpleTeam = this.GetTeam(Side.Purple, players);
-            replay.BlueTeam = this.GetTeam(Side.Blue, players);
+            replay.PurpleTeam = GetTeam(Side.Purple, players);
+            replay.BlueTeam = GetTeam(Side.Blue, players);
             replay.Players = players;
-
             return replay;
         }
 
         /// <summary>
         /// Gets the JSON part of the replay file contents.
         /// </summary>
-        public JObject GetJSON(string replayFileContents)
+        public static JObject GetJSON(string replayFileContents)
         {
             int jsonStartIndex = replayFileContents.IndexOf("{\"gameLength\"");
             int jsonEndIndex = replayFileContents.IndexOf("\\\"}]\"}") + "\\\"}]\"}".Length;
@@ -138,7 +145,7 @@ namespace LeagueReplayParser
         /// <summary>
         /// Gets the purple team object thanks to the json array
         /// </summary>
-        public List<Player> GetPlayers(JArray jsonTeams)
+        public static List<Player> GetPlayers(JArray jsonTeams)
         {
             List<Player> players = new List<Player>() { };
 
@@ -187,7 +194,7 @@ namespace LeagueReplayParser
         /// <summary>
         /// Gets the players in the given team side.
         /// </summary>
-        public Team GetTeam(Side side, List<Player> players)
+        public static Team GetTeam(Side side, List<Player> players)
         {
             return new Team()
             {
