@@ -189,12 +189,7 @@ namespace TestSuite
             var pattern = new[] { ("F901", "BE00"), ("6B00", "8B00"), ("1C02", "8601"), ("A800", "7B01"), ("1701", "A200"),
                                   ("5502", "7400"), ("F000", "0A02"), ("2101", "2F02"), ("2101", "9C01") };
 
-            ValidatePattern(pattern);
-        }
-
-        private static void ValidatePattern((string, string)[] pattern, int[] correct = null)
-        {
-            string dirName = @"C:\Users\domin\Documents\League of Legends\ReplaysNewer";
+            string dirName = @"C:\Users\domin\Documents\League of Legends\Replays";
 
             Func<string, bool> filenameFilter = f => f.EndsWith(".rofl");
 
@@ -206,13 +201,83 @@ namespace TestSuite
             var filesAsSplitLines = filenames.Select(f => File.ReadLines(f));
             var statReplays = filesAsSplitLines.Select(r => LeagueReplayParser.Parser.FillReplay(new LeagueReplayParser.Replay(null), r)).ToList();
 
+            var onlyFilenames = filenames.Select(f => f.Substring(f.LastIndexOf("\\") + 1));
+            List<(string, List<(string, string, int, List<List<IBlock>>)>, LeagueReplayParser.Replay)>
+                allTogether = onlyFilenames.Zip(asGrouped.Zip(statReplays)).Select(t => (t.First, t.Second.First, t.Second.Second)).ToList();
+
+            var allTogetherDito = allTogether.Where(a => a.Item3.Players.Any(p => p.ChampionName == "Warwick" && p.PlayerName == "Gospodin Dito" && p.Lane == Statistics.Lane.Jungle)).ToList();
+            var byVersion = allTogetherDito.GroupBy(a => a.Item3.GameVersion).ToList();
+
+            var versionWithMostGames = byVersion.OrderByDescending(r => r.Count()).First().ToList();
+
+            var onlyWarwickPlayerIndices = versionWithMostGames.Select(g => g.Item3.Players.FindIndex(p => p.ChampionName == "Warwick"));
+
+            var byUsers = versionWithMostGames
+                .Select(v => v.Item2[1])
+                .Where(v => v.Item4.Count == 10)
+                .Select(v => v.Item4)
+                .ToList();
+
+            var possiblyDito = onlyWarwickPlayerIndices.Zip(byUsers).Select(t => t.Second[t.First]);
+            var pd2 = possiblyDito.Select(pd => (pd[0] as Block).Content).ToList();
+
+            var onlyInteresting = byUsers.Select(all10 => all10.Select(one => (one[0] as Block).Content));
+
+            var onwhat = "0A";
+            var withCutCrap = onlyInteresting.Select(all10 => all10.Select(one => one.Substring(10, one.IndexOf("363636") - 8)).Select(one => one.Substring(one.IndexOf("2121")+12)).ToList()).ToList();
+
+            //var splitOnShared = onlyInteresting.Select(w => w.Select(ww => Split(ww, onwhat)))
+
+            var allUsers = byUsers.SelectMany(b => b).ToList();
+
+            //for (int i = 0; i < allUsers.Count; i++)
+            //{
+            //    for (int j = 0; j < allUsers.Count; j++)
+            //    {
+            //        if (i == j) continue;
+            //        var a = allUsers[i];
+            //        var b = allUsers[j];
+            //        if (a.Count != b.Count) continue;
+
+            //        bool same = true;
+            //        for (int k = 0; k < a.Count; k++)
+            //        {
+            //            if (a[k].Same(b[k]) == false)
+            //            {
+            //                same = false;
+            //                break;
+            //            }
+            //        }
+            //        if (same)
+            //        {
+
+            //        }
+            //    }
+            //}
+
+            var whichAreSame = new List<IBlock>();
+
+            for (int i = 0; i < allUsers.First().Count; i++)
+            {
+                var first = allUsers.First();
+                var which = first[i];
+
+                bool allHave = true;
+                for (int j = 1; j < allUsers.Count; j++)
+                {
+                    var other = allUsers[j];
+                    if (other.Any(o => o.Same(which)) == false) allHave = false;
+                }
+                if (allHave) whichAreSame.Add(which);
+            }
+
             var sample = resources[2];
             var g = Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(sample.Item2));
 
             var samples = resources.Select(r => Stuff.GetRepetitionGroupations(LmaoParser.GetBlocksFromLmao(r.Item2))).ToList();
 
             var all = Enumerable.Range(0, resources.Count).ToArray();
-
+            var correct = all.Take(0).ToArray();
             correct = correct ?? all;
 
             foreach (var i in correct.Concat(all))
@@ -228,6 +293,11 @@ namespace TestSuite
                     }
                 }
             }
+        }
+
+        private static IEnumerable<string> Split(IEnumerable<string> ww, string onwhat)
+        {
+            return ww.SelectMany(qwe => qwe.Split(onwhat, 1));
         }
 
         [TestMethod]

@@ -7,5 +7,7 @@ namespace LolReplayParser
         public string Type { get; }
 
         public int Count { get; }
+
+        public bool Same(IBlock other);
     }
 }

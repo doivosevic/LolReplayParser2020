@@ -28,5 +28,16 @@ namespace LolReplayParser
             this.Blockparam = blockparam;
             this.Content = content;
         }
+
+        public bool Same(IBlock other)
+        {
+            if (other is Block == false) return false;
+
+            var cast = other as Block;
+            return cast.Content == this.Content
+                && cast.Blockparam == this.Blockparam
+                && cast.Mask == this.Mask
+                && cast.Time == this.Time;
+        }
     }
 }

@@ -33,5 +33,15 @@ namespace LolReplayParser
                 return "";
             }
         }
+
+        public bool Same(IBlock other)
+        {
+            if (other is BlockComposed == false) return false;
+
+            var cast = other as BlockComposed;
+            if (cast.Blocks.Count != this.Blocks.Count) return false;
+
+            return cast.Blocks.Zip(this.Blocks).All(bb => bb.First.Same(bb.Second));
+        }
     }
 }
